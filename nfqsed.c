@@ -20,6 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -82,7 +83,8 @@ int queue_num = 0;
 void usage()
 {
     fprintf(stderr, "Usage: nfqsed -s /val1/val2 [-s /val1/val2] [-f file] [-v] [-q num]\n"
-            "  -s val1/val2     - replaces occurences of val1 with val2 in the packet payload\n"
+            "  -s /val1/val2    - replaces occurences of val1 with val2 in the packet payload\n"
+            "                     case-insensitively; '?' in val1 matches any byte\n"
             "  -f file          - read replacement rules from the specified file\n"
             "  -q num           - bind to queue with number 'num' (default 0)\n"
             "  -v               - be verbose\n");
@@ -194,7 +196,7 @@ uint8_t *find(const struct rule_t *rule, uint8_t *payload, int payload_length)
     for (i = 0 ; i < payload_length - rule_len + 1 ; i++) {
         match = 1;
         for (j = 0 ; j < rule_len ; j++) {
-            if (payload[i+j] != rule->val1[j]) {
+            if (tolower(payload[i+j]) != rule->val1[j] && rule->val1[j] != '?') {
                 match = 0;
                 break;
             }
