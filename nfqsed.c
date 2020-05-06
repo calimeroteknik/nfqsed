@@ -87,21 +87,29 @@ void usage()
             "                     case-insensitively; '?' in val1 matches any byte\n"
             "  -f file          - read replacement rules from the specified file\n"
             "  -q num           - bind to queue with number 'num' (default 0)\n"
-            "  -v               - be verbose\n");
+            "  -v               - be verbose, can be specified up to 4 times for extra info\n");
     exit(1);
 }
 
+void print_bytes(const uint8_t *bytes, int length)
+{
+    putchar('"');
+    for (int i = 0; i < length; i++)
+        if (bytes[i] == '\\' || bytes[i] == '"')
+            printf("\\%c", bytes[i]);
+        else if (isprint(bytes[i]))
+            printf("%c", bytes[i]);
+        else
+            printf("\\x%02x", bytes[i]);
+    putchar('"');
+}
+
+
 void print_rule(const struct rule_t *rule)
 {
-    int i = 0;
-    for (i = 0 ; i < rule->length ; i++) {
-        printf("%x", rule->val1[i]);
-    }
+    print_bytes(rule->val1, rule->length);
     printf(" -> ");
-    for (i = 0 ; i < rule->length ; i++) {
-        printf("%x", rule->val2[i]);
-    }
-    printf("\n");
+    print_bytes(rule->val2, rule->length);
 }
 
 void add_rule(const char *rule_str)
@@ -248,10 +256,19 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
     proto_payload = (uint8_t*)(payload + ip_size + proto_size);
 
     while (rule) {
-        while ((pos = find(rule, proto_payload, len - ip_size - proto_size)) != NULL) {
-            if (verbose) {
-                printf("rule match, changing payload: ");
+        int proto_payload_len = len - ip_size - proto_size;
+        while ((pos = find(rule, proto_payload, proto_payload_len)) != NULL) {
+            if (verbose > 0) {
+                printf("rule match: ");
                 print_rule(rule);
+                if (verbose > 2) {
+                    printf(", packet payload: ");
+                    print_bytes(proto_payload, proto_payload_len);
+                } else if (verbose > 1) {
+                    printf(", matching payload: ");
+                    print_bytes(pos, rule->length);
+                }
+                printf("\n");
             }
             memcpy(pos, rule->val2, rule->length);
         }
@@ -313,8 +330,8 @@ void read_queue()
 
     fd = nfq_fd(h);
     while ((rv = recv(fd, buf, sizeof(buf), 0)) && rv >= 0) {
-        if (verbose) {
-            printf("packet received\n");
+        if (verbose > 3) {
+            printf("packet received, length %d\n", rv);
         }
         nfq_handle_packet(h, buf, rv);
     }
@@ -339,7 +356,7 @@ int main(int argc, char *argv[])
     while ((opt = getopt(argc, argv, "vs:f:q:")) != -1) {
         switch (opt) {
             case 'v':
-                verbose = 1;
+                verbose++;
                 break;
             case 's':
                 add_rule(optarg);
@@ -360,10 +377,11 @@ int main(int argc, char *argv[])
     }
     if (verbose) {
         struct rule_t *rule = rules;
-        printf("Rules (in hex):\n");
+        printf("Rules:\n");
         while (rule) {
             printf("  ");
             print_rule(rule);
+            printf("\n");
             rule = rule->next;
         }
     }
