@@ -8,11 +8,12 @@ source MAC address needs to stay unchanged.
 
 Usage
 --------
-    nfqsed -s /val1/val2 [-s /val1/val2] [-f file] [-v] [-q num]
-        -s val1/val2     - replaces occurences of val1 with val2 in the packet payload
-        -f file          - read replacement rules from the specified file
-        -q num           - bind to queue with number 'num' (default 0)
-        -v               - be verbose
+    Usage: nfqsed -s /val1/val2 [-s /val1/val2] [-f file] [-v] [-q num]
+      -s /val1/val2    - replaces occurences of val1 with val2 in the packet payload
+                         except the '?' character in val1 matches any byte
+      -f file          - read replacement rules from the specified file
+      -q num           - bind to queue with number 'num' (default 0)
+      -v               - be verbose, can be specified up to 4 times for extra info
 
 Example
 -----------
